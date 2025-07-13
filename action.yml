@@ -13,6 +13,9 @@ inputs:
   image:
     description: "Docker image"
     required: true
+branding:
+  icon: activity
+  color: blue
 runs:
   using: "composite"
   steps:
