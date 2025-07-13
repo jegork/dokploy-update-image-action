@@ -1,0 +1,48 @@
+name: "Update Dokploy deployment image"
+description: "Trigger a Dokploy deployment"
+inputs:
+  base_url:
+    description: "Dokploy URL"
+    required: true
+  token:
+    description: "Dokploy auth token"
+    required: true
+  application_id:
+    description: "Dokploy app id, can be retreived at /api/project.all"
+    required: true
+  image:
+    description: "Docker image"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Trigger Dokploy deployment
+      shell: bash
+      env:
+        DOKPLOY_URL: ${{ inputs.base_url }}
+        DOKPLOY_TOKEN: ${{ inputs.token }}
+        DOKPLOY_APPLICATION_ID: ${{ inputs.application_id }}
+        DOKPLOY_IMAGE: ${{ inputs.image }}
+      run: |
+        response=$(curl -X 'POST' \
+          "$DOKPLOY_URL/api/application.update" \
+          -H 'accept: application/json' \
+          -H 'Content-Type: application/json' \
+          -H "x-api-key: $DOKPLOY_TOKEN" \
+          -d "{\"applicationId\": \"$DOKPLOY_APPLICATION_ID\", \"dockerImage\": \"$DOKPLOY_IMAGE\"}" \
+          -w "\n%{http_code}" -s)
+
+        http_code=$(echo "$response" | tail -n 1)
+        body=$(echo "$response" | head -n -1)
+
+        if [ "$http_code" -ne 200 ]; then
+          echo "Deployment failed with status code: $http_code"
+          exit 1
+        fi
+
+        if [ "$body" != "true" ]; then
+          echo "Deployment failed: expected 'true' but got '$body'"
+          exit 1
+        fi
+
+        echo "Image for application $DOKPLOY_APPLICATION_ID updated successfully to $DOKPLOY_IMAGE"
